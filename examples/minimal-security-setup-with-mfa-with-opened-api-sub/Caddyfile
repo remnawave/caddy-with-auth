@@ -1,0 +1,72 @@
+{
+	order authenticate before respond
+	order authorize before respond
+
+	security {
+		local identity store localdb {
+			realm local
+			path /data/.local/caddy/users.json
+		}
+
+		authentication portal remnawaveportal {
+			crypto default token lifetime {$AUTH_TOKEN_LIFETIME}
+			enable identity store localdb
+			cookie domain {$REMNAWAVE_PANEL_DOMAIN}
+			ui {
+				links {
+					"Remnawave" "/dashboard/home" icon "las la-tachometer-alt"
+					"My Identity" "/r/whoami" icon "las la-user"
+					"API Keys" "/r/settings/apikeys" icon "las la-key"
+					"MFA" "/r/settings/mfa" icon "lab la-keycdn"
+				}
+			}
+			transform user {
+				match origin local
+				action add role authp/admin
+				require mfa
+			}
+		}
+
+		authorization policy panelpolicy {
+			set auth url /r
+			allow roles authp/admin
+			with api key auth portal remnawaveportal realm local
+			acl rule {
+				comment "Accept"
+				match role authp/admin
+				allow stop log info
+			}
+			acl rule {
+				comment "Deny"
+				match any
+				deny log warn
+			}
+		}
+	}
+}
+
+https://{$REMNAWAVE_PANEL_DOMAIN} {
+	route /api/sub* {
+		reverse_proxy http://remnawave:3000
+	}
+
+	route /api/* {
+		authorize with panelpolicy
+		reverse_proxy http://remnawave:3000
+	}
+
+	handle /r {
+		rewrite * /auth
+		request_header +X-Forwarded-Prefix /r
+		authenticate with remnawaveportal
+	}
+
+	route /r* {
+		authenticate with remnawaveportal
+	}
+
+	route /* {
+		authorize with panelpolicy
+		reverse_proxy http://remnawave:3000
+	}
+}

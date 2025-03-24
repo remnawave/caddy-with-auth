@@ -1,0 +1,70 @@
+{
+	order authenticate before respond
+	order authorize before respond
+
+	security {
+		local identity store localdb {
+			realm local
+			path /data/.local/caddy/users.json
+		}
+
+		authentication portal remnawaveportal {
+			crypto default token lifetime {$AUTH_TOKEN_LIFETIME}
+			enable identity store localdb
+			cookie domain {$REMNAWAVE_PANEL_DOMAIN}
+			ui {
+				links {
+					"Remnawave" "/dashboard/home" icon "las la-tachometer-alt"
+					"My Identity" "/{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}/whoami" icon "las la-user"
+					"API Keys" "/{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}/settings/apikeys" icon "las la-key"
+					"MFA" "/{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}/settings/mfa" icon "lab la-keycdn"
+				}
+			}
+			transform user {
+				match origin local
+				require mfa
+				action add role authp/admin
+			}
+		}
+
+		authorization policy panelpolicy {
+			set auth url /restricted
+			allow roles authp/admin
+			acl rule {
+				comment "Accept"
+				match role authp/admin
+				allow stop log info
+			}
+			acl rule {
+				comment "Deny"
+				match any
+				deny log warn
+			}
+		}
+	}
+}
+
+https://{$REMNAWAVE_PANEL_DOMAIN} {
+	handle /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE} {
+		rewrite * /auth
+		request_header +X-Forwarded-Prefix /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}
+		authenticate with remnawaveportal
+	}
+
+	handle_path /restricted* {
+		abort
+	}
+
+	route /api/* {
+		reverse_proxy http://remnawave:3000
+	}
+
+	route /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}* {
+		authenticate with remnawaveportal
+	}
+
+	route /* {
+		authorize with panelpolicy
+		reverse_proxy http://remnawave:3000
+	}
+}

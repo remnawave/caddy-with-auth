@@ -1,0 +1,32 @@
+services:
+  remnawave-caddy:
+    image: remnawave/caddy-with-auth:latest
+    container_name: "remnawave-caddy"
+    hostname: remnawave-caddy
+    restart: always
+    environment:
+      - REMNAWAVE_PANEL_DOMAIN=PANEL_DOMAIN
+      - REMNAWAVE_CUSTOM_LOGIN_ROUTE=supersecretroute
+      - AUTHP_ADMIN_USER=LOGIN_USERNAME
+      - AUTHP_ADMIN_EMAIL=LOGIN_EMAIL
+      - AUTHP_ADMIN_SECRET=LOGIN_PASSWORD
+      - AUTH_TOKEN_LIFETIME=3600
+    ports:
+      - "0.0.0.0:443:443"
+    networks:
+      - remnawave-network
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - remnawave-caddy-ssl-data:/data
+
+networks:
+  remnawave-network:
+    name: remnawave-network
+    driver: bridge
+    external: true
+
+volumes:
+  remnawave-caddy-ssl-data:
+    driver: local
+    external: false
+    name: remnawave-caddy-ssl-data
