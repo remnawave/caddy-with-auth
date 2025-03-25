@@ -30,6 +30,7 @@
 		authorization policy panelpolicy {
 			set auth url /restricted
 			allow roles authp/admin
+			with api key auth portal remnawaveportal realm local
 			acl rule {
 				comment "Accept"
 				match role authp/admin
