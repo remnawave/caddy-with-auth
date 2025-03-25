@@ -46,7 +46,11 @@
 }
 
 https://{$REMNAWAVE_PANEL_DOMAIN} {
-	handle /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE} {
+	@login_path {
+		path /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE} /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}/ /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}/auth
+	}
+
+	handle @login_path {
 		rewrite * /auth
 		request_header +X-Forwarded-Prefix /{$REMNAWAVE_CUSTOM_LOGIN_ROUTE}
 		authenticate with remnawaveportal
